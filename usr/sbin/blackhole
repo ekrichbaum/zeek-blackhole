@@ -6,6 +6,16 @@ use Fcntl qw(:flock);
 use Net::Subnet;
 use DBI;
 
+#
+# SQLite db file and basic variable defines
+#
+$dbh = DBI->connect("dbi:SQLite:dbname=/var/www/bro-unblocker/blocked_ips.db","","");
+$datestring = strftime "%Y%m%d", localtime;
+$timestring = strftime "%H%M%S ", localtime;
+$file = "/tmp/$datestring-blackhole.log";
+$debug_file = "/tmp/$datestring-debug-blackhole.log";
+$lockfile = '/tmp/blackhole.lock';
+
 # careful with this ...
 $our_networks = subnet_matcher(
   # list any local networks here so that they won't be blackholed.
@@ -39,14 +49,6 @@ if ( $our_networks->($src) ){
   exit;
 }
 
-$dbh = DBI->connect("dbi:SQLite:dbname=/var/www/bro-unblocker/blocked_ips.db","","");
-$datestring = strftime "%Y%m%d", localtime;
-$timestring = strftime "%H%M%S ", localtime;
-$file = "/tmp/$datestring-blackhole.log";
-$debug_file = "/tmp/$datestring-debug-blackhole.log";
-$lockfile = '/tmp/blackhole.lock';
-
-
 $qry="SELECT * FROM blocked_ips WHERE ip=\"$src\"";
 $rows = $dbh->selectrow_array($qry);
 
@@ -67,7 +69,6 @@ if ( $rows < 1 ){
     $dbh->disconnect();
 
     # Connect to zebra and add the null route for RTBH
-    #@args=("vtysh", "-c", "config t", "-c", "ip route $src/32 null0", "-c", "exit", "-c", "wr mem");
     @args=("vtysh", "-c", "config t", "-c", "ip route $src/32 null0", "-c", "exit");
     system(@args);
 
