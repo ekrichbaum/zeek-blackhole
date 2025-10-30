@@ -1,3 +1,7 @@
 place scripts in /opt/zeek/share/zeek/site
 
 /opt/zeek/bin/zeekctl deploy
+
+Zeek -> frr for routing.  drop in static null route, bgp redistribute with community to routers.
+
+web ui to unblock.
