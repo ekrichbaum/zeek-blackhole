@@ -1,0 +1,3 @@
+single table blocked_ips
+
+CREATE TABLE blocked_ips(id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, ip TEXT, whitelistip INTEGER NOT NULL DEFAULT 0, whitelistcust char(50));
