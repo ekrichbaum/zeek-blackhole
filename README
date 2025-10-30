@@ -1,0 +1,3 @@
+place scripts in /opt/zeek/share/zeek/site
+
+/opt/zeek/bin/zeekctl deploy
