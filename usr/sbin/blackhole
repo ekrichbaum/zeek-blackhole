@@ -1,0 +1,93 @@
+#!/usr/bin/perl
+
+use POSIX qw(strftime);
+use Fcntl qw(:flock);
+#use Net::SSH::Perl;
+use Net::Subnet;
+use DBI;
+
+# careful with this ...
+$our_networks = subnet_matcher(
+  # list any local networks here so that they won't be blackholed.
+  '10.0.0.0/8',
+  '192.168.0.0/16',
+  '172.16.0.0/12'
+);
+
+$heavyUDP = subnet_matcher(
+  '10.1.3.4/32' # MediaProxy01
+);
+
+$notice=$ARGV[2];
+($ts,$uid,$proto,$note,$msg,$sub,$src,$dst,$p,$identifier) = (split /;;;/, $notice);
+($foo,$ts) = (split /=/, $ts);
+($foo,$uid) = (split /=/, $uid);
+($foo,$proto) = (split /=/, $proto);
+($foo,$note) = (split /=/, $note);
+($foo,$msg) = (split /=/, $msg);
+($foo,$sub) = (split /=/, $sub);
+($foo,$src) = (split /=/, $src);
+($foo,$dst) = (split /=/, $dst);
+($foo,$p) = (split /=/, $p);
+($foo,$identifier) = (split /=/, $identifier);
+
+if ( $note eq "ScanUDP::Port_Scan" && $heavyUDP->($dst) ){
+  exit;
+}
+
+if ( $our_networks->($src) ){
+  exit;
+}
+
+$dbh = DBI->connect("dbi:SQLite:dbname=/var/www/bro-unblocker/blocked_ips.db","","");
+$datestring = strftime "%Y%m%d", localtime;
+$timestring = strftime "%H%M%S ", localtime;
+$file = "/tmp/$datestring-blackhole.log";
+$debug_file = "/tmp/$datestring-debug-blackhole.log";
+$lockfile = '/tmp/blackhole.lock';
+
+
+$qry="SELECT * FROM blocked_ips WHERE ip=\"$src\"";
+$rows = $dbh->selectrow_array($qry);
+
+open(S, '>', $lockfile);
+
+if ( $rows < 1 ){
+
+  foreach (1..10) {
+    $is_locked = flock(S, LOCK_EX | LOCK_NB);
+    last if $is_locked;
+    sleep 1;
+  }
+
+  if ( $is_locked ){
+    # Stick it in the table so we don't repeat ourselves...
+    $qry = "INSERT INTO blocked_ips (id, ip) VALUES(NULL,?)";
+    $dbh->do($qry,undef,$src);
+    $dbh->disconnect();
+
+    # Connect to zebra and add the null route for RTBH
+    #@args=("vtysh", "-c", "config t", "-c", "ip route $src/32 null0", "-c", "exit", "-c", "wr mem");
+    @args=("vtysh", "-c", "config t", "-c", "ip route $src/32 null0", "-c", "exit");
+    system(@args);
+
+    $msg = "Blocked $src because it $note $dst\n";
+ } else {
+    $msg = "Could not block $src for $note $dst because could not get lock\n";
+ }
+  close(S);
+
+}else{
+  #$msg = "Would have blocked $src because it $note $dst but it was already blocked\n";
+  $msg = "";
+}
+
+# log it
+open(my $fh, '>>', $file) or die "Could not open file '$file' $!";
+if ( $msg ne "" ){
+  printf $fh "%s%s", $timestring, $msg;
+}
+close($fh);
+
+#####
+# /usr/bin/perl /usr/bin/blackhole Scan::Address_Scan 39.115.40.60 ts=1430757723.221738;;;uid=;;;proto=tcp;;;note=Scan::Address_Scan;;;msg=39.115.40.60 scanned at least 5 unique hosts on port 9200/tcp in 1m21s;;;sub=remote;;;src=39.115.40.60;;;dst=;;;p=9200/tcp;;;n=;;;identifier=39.115.40.60
