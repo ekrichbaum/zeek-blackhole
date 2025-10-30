@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block body %}
+  {% if ip %}
+    <form action="{{ url_for('freeip') }}" method="post" class="add-entry">
+      <dl>
+        <dt>{{ip}}: <input type="text" name="customer" id="customer" value="Enter Customer Name" size=50/> <input type="submit" value="Unblock"/> </dt>
+        <dd><input type="hidden" value="{{ip}}" id="ip" name="ip"/></dd>
+        {% for source in ban_source %}
+        <dd><input type="hidden" value="{{source}}" id="ban_source" name="ban_source"/></dd>
+        {% endfor %}
+      </dl>
+    </form>
+  {% else %}
+    <!-- send back to main -->
+  {% endif %}
+{% endblock %}
