@@ -1,0 +1,9 @@
+{% extends "layout.html" %}
+{% block body %}
+    <form action="{{ url_for('checkip') }}" method="post" class="add-entry">
+      <dl>
+        <dt>IP Address: <input type="text" size="15" name="ip" id="ip"/></dt>
+        <dd><input type="submit" value="Check" /></dd>
+      </dl>
+    </form>
+{% endblock %}
