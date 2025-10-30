@@ -2,7 +2,6 @@
 
 use POSIX qw(strftime);
 use Fcntl qw(:flock);
-#use Net::SSH::Perl;
 use Net::Subnet;
 use DBI;
 
